@@ -3,7 +3,7 @@
 本节我们简要介绍如何基于 transformers、peft 等框架，对 LLaMA3_1-8B-Instruct 模型进行 Lora 微调。Lora 是一种高效微调方法，深入了解其原理可参见博客：[知乎|深入浅出Lora](https://zhuanlan.zhihu.com/p/650197598)。
 
 
-这个教程会在同目录下给大家提供一个 [nodebook](./04-LLaMA3_1-8B-Instruct%20Lora.ipynb) 文件，来让大家更好的学习。
+这个教程会在同目录下给大家提供一个 [notebook](./04-LLaMA3_1-8B-Instruct%20Lora.ipynb) 文件，来让大家更好的学习。
 
 ## 环境配置
 
@@ -28,7 +28,7 @@ python -m pip install --upgrade pip
 pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 pip install modelscope==1.16.1
-pip install transformers==4.42.4
+pip install transformers==4.43.2
 pip install accelerate==0.32.1
 pip install peft==0.11.1
 pip install datasets==2.20.0
@@ -50,7 +50,7 @@ import torch
 from modelscope import snapshot_download, AutoModel, AutoTokenizer
 import os
 model_dir = snapshot_download('LLM-Research/Meta-Llama-3.1-8B-Instruct', cache_dir='/root/autodl-tmp', revision='master')
-```  
+```
 
 > 注意：记得修改 `cache_dir` 为你的模型下载路径哦~
 
@@ -89,7 +89,7 @@ LLM 的微调一般指指令微调过程。所谓指令微调，是说我们使�
 def process_func(example):
     MAX_LENGTH = 384    # Llama分词器会将一个中文字切分为多个token，因此需要放开一些最大长度，保证数据的完整性
     input_ids, attention_mask, labels = [], [], []
-    instruction = tokenizer(f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n现在你要扮演皇帝身边的女人--甄嬛<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n{example['instruction'] + example['input']}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n", add_special_tokens=False)  # add_special_tokens 不在开头加 special_tokens
+    instruction = tokenizer(f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nCutting Knowledge Date: December 2023\nToday Date: 26 Jul 2024\n\n现在你要扮演皇帝身边的女人--甄嬛<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n{example['instruction'] + example['input']}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n", add_special_tokens=False)  # add_special_tokens 不在开头加 special_tokens
     response = tokenizer(f"{example['output']}<|eot_id|>", add_special_tokens=False)
     input_ids = instruction["input_ids"] + response["input_ids"] + [tokenizer.pad_token_id]
     attention_mask = instruction["attention_mask"] + response["attention_mask"] + [1]  # 因为eos token咱们也是要关注的所以 补充为1
@@ -216,7 +216,7 @@ messages = [
         {"role": "user", "content": prompt}
 ]
 
-input_ids = tokenizer.apply_chat_template(messages, tokenize=False)
+input_ids = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 model_inputs = tokenizer([input_ids], return_tensors="pt").to('cuda')
 generated_ids = model.generate(model_inputs.input_ids,max_new_tokens=512)
 generated_ids = [
